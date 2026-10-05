@@ -1,0 +1,5 @@
+streamlit>=1.50.0
+pillow>=10.0.0
+numpy>=1.26.0
+fastai==2.8.12
+plum-dispatch==2.9.0

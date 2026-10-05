@@ -1,0 +1,13 @@
+{
+  "dataset_id": "arunapb/nutrition5k-foodseg103",
+  "dataset_revision": "cd90be60e10ed039b716cd26b8ba1ecc6ed1e4fc",
+  "dataset_license": "CC BY 4.0 (verify original source terms before redistribution)",
+  "target": "total calories for one pictured plate, kcal",
+  "validation_mae_kcal": 42.54636493396202,
+  "validation_absolute_error_p90_kcal": 93.3250040921014,
+  "held_out_test_mae_kcal": 37.624799509558954,
+  "training_mean_baseline_test_mae_kcal": 127.12045288085938,
+  "calibration_slope": 1.5231564746284305,
+  "calibration_intercept_kcal": 97.36412115384556,
+  "cuisine_coverage_note": "Nutrition5k was collected in California cafeterias; Indian-food accuracy is not established."
+}

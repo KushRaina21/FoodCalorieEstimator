@@ -40,7 +40,7 @@ Open the local URL printed in the terminal and upload one food-plate image. The 
 
 1. Push this project, including `models/food_calorie_model.pkl` and `models/calorie_metrics.json`, to its own GitHub repository.
 2. In Streamlit Community Cloud, create an app from that repository and choose `app.py` as the main file.
-3. Select Python 3.13 in the app's advanced settings. Cloud installs only the serving packages from `requirements.txt`.
+3. Select Python 3.13 in the app's advanced settings. Cloud installs the pinned, locally tested serving packages from `requirements.txt` (including FastAI 2.7.19 and PyTorch 2.6.0).
 
 The trained model artifact is approximately 45 MB and is included with the app so predictions are available at startup. The notebook and training dependencies remain in the repository, but are not installed in the Cloud serving environment.
 

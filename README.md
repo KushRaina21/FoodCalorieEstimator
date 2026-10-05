@@ -21,7 +21,7 @@ python -m ipykernel install --user --name food-calorie-estimator
 jupyter notebook
 ```
 
-Open `notebooks/train_calorie_model.ipynb` and run its cells from top to bottom. The notebook downloads a pinned revision of the small public training subset, fine-tunes an ImageNet-pretrained ResNet-18 using FastAI, calibrates using validation data, compares held-out mean absolute error against a training-mean baseline, and exports the model and a validation-error range to `models/`.
+Open `notebooks/train_calorie_model.ipynb` and run its cells from top to bottom. The notebook downloads a pinned revision of the small public training subset, fine-tunes an ImageNet-pretrained ResNet-18 using FastAI, calibrates using validation data, compares held-out mean absolute error against a training-mean baseline, and exports the FastAI learner, a TorchScript deployment model, and validation-error metadata to `models/`.
 
 The pretrained weights download on first training and training can be slow on CPU. Keep the official train and test splits separate; the notebook uses only the source training split for fitting and validation and reports final error on the held-out source test split.
 
@@ -38,11 +38,11 @@ Open the local URL printed in the terminal and upload one food-plate image. The 
 
 ## Deploy to Streamlit Community Cloud
 
-1. Push this project, including `models/food_calorie_model.pkl` and `models/calorie_metrics.json`, to its own GitHub repository.
+1. Push this project, including `models/food_calorie_model.ts` and `models/calorie_metrics.json`, to its own GitHub repository. The `.pkl` learner is retained for training/re-export, but the app loads TorchScript to avoid Python pickle class/import compatibility problems in the hosted environment.
 2. In Streamlit Community Cloud, create an app from that repository and choose `app.py` as the main file.
-3. Select Python 3.13 in the app's advanced settings. Cloud installs the pinned, locally tested serving packages from `requirements.txt` (including FastAI 2.7.19 and PyTorch 2.6.0).
+3. Select Python 3.13 in the app's advanced settings. Cloud installs the serving packages from `requirements.txt`; notebook and training packages are listed separately in `requirements-training.txt`.
 
-The trained model artifact is approximately 45 MB and is included with the app so predictions are available at startup. The notebook and training dependencies remain in the repository, but are not installed in the Cloud serving environment.
+The TorchScript deployment model is approximately 45 MB and is included with the app so predictions are available at startup. The notebook and training dependencies remain in the repository, but FastAI is not installed in the Cloud serving environment.
 
 ## Data and attribution
 

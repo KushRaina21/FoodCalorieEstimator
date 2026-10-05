@@ -4,20 +4,35 @@ from pathlib import Path
 import numpy as np
 import streamlit as st
 import torch
-from fastai.vision.all import PILImage, load_learner
 from PIL import Image, UnidentifiedImageError
+from torchvision import transforms
 
 PROJECT_DIR = Path(__file__).resolve().parent
-MODEL_PATH = PROJECT_DIR / "models" / "food_calorie_model.pkl"
+MODEL_PATH = PROJECT_DIR / "models" / "food_calorie_model.ts"
 METRICS_PATH = PROJECT_DIR / "models" / "calorie_metrics.json"
 
 st.set_page_config(page_title="Food Calorie Estimator", page_icon="🍽️")
+
+PREPROCESS = transforms.Compose(
+    [
+        transforms.Resize(
+            224,
+            interpolation=transforms.InterpolationMode.BILINEAR,
+        ),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225),
+        ),
+    ]
+)
 
 
 def load_model():
     if not MODEL_PATH.is_file() or not METRICS_PATH.is_file():
         raise FileNotFoundError(
-            "The trained model or its metrics are missing. Run all cells in "
+            "The deployment model or its metrics are missing. Run all cells in "
             "notebooks/train_calorie_model.ipynb to create both files."
         )
 
@@ -26,35 +41,11 @@ def load_model():
     if file_header.startswith(b"version https://git-lfs.github.com/spec/v1"):
         raise RuntimeError(
             "The model file is a Git LFS pointer, not the model binary. "
-            "Download or commit the actual trained model file."
+            "Commit the actual trained model file."
         )
 
-    import plum._resolver
-
-    if not getattr(plum._resolver.Resolver, "_food_calorie_legacy_compatible", False):
-        class LegacyResolver(plum._resolver.Resolver):
-            __slots__ = ("__dict__",)
-
-            def __setstate__(self, state):
-                state_parts = state if isinstance(state, tuple) else (state,)
-                for part in state_parts:
-                    if part is None:
-                        continue
-                    if not isinstance(part, dict):
-                        raise TypeError(
-                            "Unsupported serialized Resolver state: "
-                            f"{type(part).__name__}"
-                        )
-                    for name, value in part.items():
-                        setattr(self, name, value)
-
-        LegacyResolver.__name__ = "Resolver"
-        LegacyResolver.__qualname__ = "Resolver"
-        LegacyResolver._food_calorie_legacy_compatible = True
-        plum._resolver.Resolver = LegacyResolver
-
-    learner = load_learner(MODEL_PATH, cpu=True)
-    learner.model.eval()
+    model = torch.jit.load(MODEL_PATH, map_location="cpu")
+    model.eval()
     metrics = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
     error_range = float(metrics["validation_absolute_error_p90_kcal"])
     calibration_slope = float(metrics["calibration_slope"])
@@ -63,7 +54,7 @@ def load_model():
         [error_range, calibration_slope, calibration_intercept]
     ).all() or error_range < 0:
         raise ValueError("The exported calorie metrics contain invalid values.")
-    return learner, error_range, calibration_slope, calibration_intercept
+    return model, error_range, calibration_slope, calibration_intercept
 
 
 @st.cache_resource
@@ -73,11 +64,9 @@ def get_model():
 
 def estimate_calories(image: Image.Image, model_data):
     model, error_range_kcal, calibration_slope, calibration_intercept = model_data
-    image_tensor = model.dls.after_item(PILImage.create(image.convert("RGB")))
-    image_tensor = model.dls.after_batch.fs[0](image_tensor)
-    image_tensor = model.dls.after_batch.fs[-1](image_tensor)
+    image_tensor = PREPROCESS(image.convert("RGB")).unsqueeze(0)
     with torch.inference_mode():
-        prediction = model.model(image_tensor)
+        prediction = model(image_tensor)
     raw_prediction_kcal = float(prediction.reshape(-1)[0].item())
     predicted_kcal = calibration_slope * raw_prediction_kcal + calibration_intercept
     if not np.isfinite(predicted_kcal):
